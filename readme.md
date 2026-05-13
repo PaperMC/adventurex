@@ -1,4 +1,4 @@
-# adventure
+# adventurex
 
 ![GitHub Workflow Status](https://img.shields.io/github/actions/workflow/status/PaperMC/adventurex/ci.yaml)
 [![MIT License](https://img.shields.io/badge/license-MIT-blue)](license.txt)
