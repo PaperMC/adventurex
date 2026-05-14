@@ -173,7 +173,7 @@ jobs:
             publishing_env_vars="${publishing_env_vars#*$var_name=\"$var_value\"}"
             export "$var_name=$var_value"
           done  
-          ./gradlew ${{ env.MODULE_TO_RELEASE}}${{ inputs.extra_gradle_params }} ${{ inputs.gradle_release_publish_tasks }} ${{ inputs.extra_gradle_publish_params }}
+          ./gradlew ${{ env.MODULE_TO_RELEASE }} ${{ inputs.extra_gradle_params }} ${{ inputs.gradle_release_publish_tasks }} ${{ inputs.extra_gradle_publish_params }}
       - name: "copy javadoc for publication"
         if: "${{ inputs.publish_release_javadoc && runner.os == 'Linux' && env.STATUS == 'release' && github.event_name == 'release' }}"
         run: |
