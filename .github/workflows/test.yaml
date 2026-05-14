@@ -110,7 +110,7 @@ jobs:
             build/reports/
             */build/reports/
       - name: "determine status & prepare for publish"
-        if: "${{ runner.os == 'Linux' && inputs.publish_modules_individually != 'true' }}"
+        if: "${{ runner.os == 'Linux' && inputs.publish_modules_individually != true }}"
         run: |
           # Disable dependency graph generation after first build, plus for this step itself
           echo "GITHUB_DEPENDENCY_GRAPH_ENABLED=false" >> $GITHUB_ENV
@@ -122,7 +122,7 @@ jobs:
             echo "STATUS=release" >> $GITHUB_ENV
           fi
       - name: "determine status and released module & prepare for publish"
-        if: "${{ runner.os == 'Linux' && inputs.publish_modules_individually == 'true' }}"
+        if: "${{ runner.os == 'Linux' && inputs.publish_modules_individually == true }}"
         run: |
           # Disable dependency graph generation after first build, plus for this step itself
           echo "GITHUB_DEPENDENCY_GRAPH_ENABLED=false" >> $GITHUB_ENV
