@@ -42,7 +42,8 @@ dependencyResolutionManagement {
 rootProject.name = "adventurex-parent"
 
 sequenceOf(
-  "nbt-dfu"
+  "nbt-dfu",
+  "dummy"
 ).forEach {
   include("adventurex-$it")
   project(":adventurex-$it").projectDir = file(it)

@@ -1,0 +1,226 @@
+name: Run CI
+
+on:
+  workflow_call:
+    inputs:
+      runtime_version:
+        description: 'The default Java runtime version to run builds on'
+        required: false
+        type: number
+        default: 17
+      publishing_branch_regex:
+        description: 'The regular expression to determine if a certain branch build should be published'
+        required: false
+        type: string
+        default: '(?:(?:(?:main\/)?(\d+(?:\.\d+)*(?:\.x)?)))|master|main|trunk'
+      extra_gradle_params:
+        description: 'Extra arguments to pass to all Gradle invocations'
+        required: false
+        type: string
+        default: ''
+      extra_gradle_publish_params:
+        description: 'Extra arguments to pass to the Gradle invocation that publishes this project'
+        required: false
+        type: string
+        default: ''
+      gradle_release_publish_tasks:
+        description: 'Extra tasks to pass to the Gradle invocation that publishes releases of this project'
+        required: false
+        type: string
+        default: 'publishToSonatype closeAndReleaseSonatypeStagingRepository'
+      gradle_warning_mode:
+        description: 'Warning mode to set on Gradle executions'
+        required: false
+        type: string
+        default: 'fail'
+      publish_releases:
+        description: 'Whether to publish releases of this project. The gradle_release_publish_params input must be provided when publishing to anything but Sonatype Central'
+        required: false
+        type: boolean
+        default: false
+      publish_modules_individually:
+        description: 'Whether modules should be released individually.'
+        required: false
+        type: boolean
+        default: false
+      publish_release_javadoc:
+        description: 'Whether to publish Javadocs on release'
+        required: false
+        type: boolean
+        default: false
+      javadoc_deploy_prefix:
+        description: 'Extra subdirectory to publish javadoc under'
+        required: false
+        type: string
+        default: ''
+      javadoc_deploy_owner:
+        description: "Owner of the Javadoc repository"
+        required: false
+        type: "string"
+        default: "${{ github.repository_owner }}"
+      javadoc_deploy_repo:
+        description: "Repository to deploy javadoc to"
+        required: false
+        type: "string"
+        default: "adventure-javadocs"
+    secrets:
+      publishing_env_vars:
+        description: extra env file for any environment to apply to publishing commands
+        required: false
+      DEPLOYMENT_APP_ID:
+        description: 'App id for JD publisher'
+        required: false
+      DEPLOYMENT_APP_SECRET:
+        description: 'App key for JD publisher'
+        required: false
+
+concurrency:
+  group: "${{ github.workflow }}-${{ github.event.number || github.ref }}"
+  cancel-in-progress: true
+
+permissions:
+  actions: "write"
+  contents: "read"
+  id-token: "write"
+
+jobs:
+  build:
+    # Only run on PRs if the source branch is on someone else's repo
+    if: "${{ github.event_name != 'pull_request' || github.repository != github.event.pull_request.head.repo.full_name }}"
+    strategy:
+      matrix:
+        os: ["ubuntu-latest", "windows-latest"]
+    runs-on: "${{ matrix.os }}"
+    steps:
+      - name: "setup environment"
+        id: "setup"
+        uses: "KyoriPowered/.github/.github/actions/setup-java-env@trunk"
+        with:
+          runtime_version: "${{ inputs.runtime_version }}"
+          publishing_branch_regex: "${{ inputs.publishing_branch_regex }}"
+          gradle_warning_mode: "${{ inputs.gradle_warning_mode }}"
+      - name: "run gradle build"
+        run: "./gradlew ${{ inputs.extra_gradle_params }} build"
+      - name: "archive test results"
+        if: "${{ always() }}"
+        uses: "actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f" # v7.0.0
+        with:
+          name: "${{ runner.os }}-test-results"
+          path: |
+            build/reports/
+            */build/reports/
+      - name: "determine status & prepare for publish"
+        if: "${{ runner.os == 'Linux' && inputs.publish_modules_individually != 'true' }}"
+        run: |
+          # Disable dependency graph generation after first build, plus for this step itself
+          echo "GITHUB_DEPENDENCY_GRAPH_ENABLED=false" >> $GITHUB_ENV
+          export GITHUB_DEPENDENCY_GRAPH_ENABLED=false
+
+          if [ "$(./gradlew properties | awk '/^version:/ { print $2; }' | grep '\-SNAPSHOT')" ]; then
+            echo "STATUS=snapshot" >> $GITHUB_ENV
+          else
+            echo "STATUS=release" >> $GITHUB_ENV
+          fi
+      - name: "determine status and released module & prepare for publish"
+        if: "${{ runner.os == 'Linux' && inputs.publish_modules_individually == 'true' }}"
+        run: |
+          # Disable dependency graph generation after first build, plus for this step itself
+          echo "GITHUB_DEPENDENCY_GRAPH_ENABLED=false" >> $GITHUB_ENV
+          export GITHUB_DEPENDENCY_GRAPH_ENABLED=false
+
+          moduleToRelease=$(./gradlew shouldDoRelease | awk '/^do release (.*)$/ { print "-p "$3; }')
+          moduleCount=$(echo $moduleToRelease | grep -ow "\-p" | wc -l)
+          if [ "$moduleCount" -eq 1 ]; then
+            echo "STATUS=release" >> $GITHUB_ENV
+            echo "MODULE_TO_RELEASE=$moduleToRelease " >> $GITHUB_ENV
+          elif [ "$moduleCount" -gt 1 ]; then
+            echo "::error::Multiple modules were marked for release. Please only release one module at a time when using publish_modules_individually."
+            exit 1
+          else
+            echo "STATUS=snapshot" >> $GITHUB_ENV
+          fi
+      - name: "publish snapshot"
+        if: "${{ runner.os == 'Linux' && env.STATUS != 'release' && github.event_name == 'push' && steps.setup.outputs.publishing_branch != '' }}"
+        env:
+          PUBLISHING_ENV: ${{ secrets.publishing_env_vars }}
+        run: |
+          echo "$PUBLISHING_ENV" > /tmp/publishing_env_vars 
+          publishing_env_vars="$(cat /tmp/publishing_env_vars)"
+          rm /tmp/publishing_env_vars
+          regex='([a-zA-Z0-9_]+)="((([^"]*\\n)*[^"]*)|([^"]*))"'
+          
+          while [[ $publishing_env_vars =~ $regex ]]; do
+            var_name="${BASH_REMATCH[1]}"
+            var_value="${BASH_REMATCH[2]}"
+            publishing_env_vars="${publishing_env_vars#*$var_name=\"$var_value\"}"
+            export "$var_name=$var_value"
+          done  
+          ./gradlew ${{ inputs.extra_gradle_params }} publish ${{ inputs.extra_gradle_publish_params }}
+      - name: "publish release"
+        if: "${{ inputs.publish_releases && runner.os == 'Linux' && env.STATUS == 'release' && github.event_name == 'release' }}"
+        env:
+          PUBLISHING_ENV: ${{ secrets.publishing_env_vars }}
+        run: |
+          echo "$PUBLISHING_ENV" > /tmp/publishing_env_vars 
+          publishing_env_vars="$(cat /tmp/publishing_env_vars)"
+          rm /tmp/publishing_env_vars
+          regex='([a-zA-Z0-9_]+)="((([^"]*\\n)*[^"]*)|([^"]*))"'
+
+          while [[ $publishing_env_vars =~ $regex ]]; do
+            var_name="${BASH_REMATCH[1]}"
+            var_value="${BASH_REMATCH[2]}"
+            publishing_env_vars="${publishing_env_vars#*$var_name=\"$var_value\"}"
+            export "$var_name=$var_value"
+          done  
+          ./gradlew ${{ env.MODULE_TO_RELEASE}}${{ inputs.extra_gradle_params }} ${{ inputs.gradle_release_publish_tasks }} ${{ inputs.extra_gradle_publish_params }}
+      - name: "copy javadoc for publication"
+        if: "${{ inputs.publish_release_javadoc && runner.os == 'Linux' && env.STATUS == 'release' && github.event_name == 'release' }}"
+        run: |
+          mkdir -p build/publish-jd/${{ inputs.javadoc_deploy_prefix }}
+          ./gradlew ${{ inputs.extra_gradle_params }} copyJavadoc --output build/publish-jd/${{ inputs.javadoc_deploy_prefix }}
+      - name: "authenticate for javadoc publication"
+        if: "${{ inputs.publish_release_javadoc && runner.os == 'Linux' && env.STATUS == 'release' && github.event_name == 'release' }}"
+        uses: "actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859" # v3.0.0
+        id: jd-token
+        with:
+          app-id: "${{ secrets.DEPLOYMENT_APP_ID }}"
+          private-key: "${{ secrets.DEPLOYMENT_APP_SECRET }}"
+          owner: "${{ inputs.javadoc_deploy_owner }}"
+          repositories: "${{ inputs.javadoc_deploy_repo }}"
+      - name: "get JD app ID"
+        if: "${{ inputs.publish_release_javadoc && runner.os == 'Linux' && env.STATUS == 'release' && github.event_name == 'release' }}"
+        id: "get-app-id"
+        run: 'echo "user-id=$(gh api "/users/${{ steps.jd-token.outputs.app-slug }}[bot]" --jq .id)" >> "$GITHUB_OUTPUT"'
+      - name: "publish javadoc"
+        if: "${{ inputs.publish_release_javadoc && runner.os == 'Linux' && env.STATUS == 'release' && github.event_name == 'release' }}"
+        uses: JamesIves/github-pages-deploy-action@d92aa235d04922e8f08b40ce78cc5442fcfbfa2f # v4.8.0
+        with:
+          folder: build/publish-jd
+          repository-name: "${{ inputs.javadoc_deploy_owner }}/${{ inputs.javadoc_deploy_repo }}"
+          token: ${{ steps.jd-token.outputs.token }}
+          branch: main
+          git-config-name: "${{ steps.jd-token.outputs.app-slug }}[bot]"
+          git-config-email: "${{ steps.get-app-id.outputs.user-id }}+${{ steps.jd-token.outputs.app-slug }}[bot]@users.noreply.github.com"
+          clean: false
+          force: false
+          commit-message: "Publishing javadoc for ${{ github.repository }} ${{ env.PROJECT_VERSION }}"
+  upload-dependencies:
+    name: "submit dependency graph"
+    # try to run on build failure too?
+    if: github.event_name == 'push' && always()
+    needs: "build"
+    runs-on: "ubuntu-latest"
+    permissions:
+      contents: "write"
+    steps:
+      - name: "check branch for publish"
+        uses: "KyoriPowered/action-regex-match@5684ded1f3e016437483d3d74cfa93fcdf5e313b" # v5.0.0
+        id: "branch-name"
+        with:
+          text: "${{ github.ref }}"
+          regex: "^refs/heads/(?:${{ inputs.publishing_branch_regex }})$" # master or something like 0.8.x or 2.x
+      - name: "submit dependency graph"
+        uses: "gradle/actions/setup-gradle@0723195856401067f7a2779048b490ace7a47d7c" # v5.0.2
+        if: steps.branch-name.outputs.match != ''
+        with:
+          dependency-graph: "download-and-submit"

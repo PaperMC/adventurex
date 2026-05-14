@@ -65,7 +65,7 @@ tasks {
   jacocoTestReport {
     dependsOn(test)
   }
-  
+
   withType(JavaCompile::class).configureEach {
     options.errorprone {
       disable("InvalidBlockTag") // we use custom block tags
@@ -77,5 +77,15 @@ tasks {
     options.compilerArgs.add("-Xlint:all")
     options.compilerArgs.add("-Xlint:-processing") // unclaimed ap warnings are not needed
     options.compilerArgs.add("-Xlint:-serial") // nobody cares about serialization
+  }
+}
+
+tasks.register("shouldDoRelease") {
+  description = "Checks if this module should be released."
+  doLast {
+    if (project.version.toString().contains("SNAPSHOT")) {
+      return@doLast
+    }
+    logger.lifecycle("do release ${project.projectDir.name}")
   }
 }
