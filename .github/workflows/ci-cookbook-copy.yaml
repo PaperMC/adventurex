@@ -1,5 +1,7 @@
 name: Run CI
 
+# todo remove me again when https://github.com/KyoriPowered/ci-cookbook/pull/13 is tested an merged
+
 on:
   workflow_call:
     inputs:

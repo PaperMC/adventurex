@@ -15,7 +15,7 @@ permissions:
 
 jobs:
   call-build:
-    uses: "./.github/workflows/test.yaml"
+    uses: "./.github/workflows/ci-cookbook-copy.yaml"
     with:
       publish_releases: true
       publish_release_javadoc: false
