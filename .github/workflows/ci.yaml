@@ -15,12 +15,11 @@ permissions:
 
 jobs:
   call-build:
-    uses: "KyoriPowered/ci-cookbook/.github/workflows/java-ci.yaml@f3b9a3fbb31e9f4320d855e7be17b028522e87be" # 2026.02.07
+    uses: "./.github/workflows/ci-cookbook-copy.yaml"
     with:
-      # todo: needs to be adjusted to only publish specific modules when a release is made for that module
-      # todo: each module will have a different version, so releases might be made at different times and on a per-module basis
       publish_releases: true
       publish_release_javadoc: false
+      publish_modules_individually: true
       runtime_version: 25
     secrets:
       # todo: these should be using paper secrets instead
