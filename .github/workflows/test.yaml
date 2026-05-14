@@ -130,6 +130,7 @@ jobs:
 
           moduleToRelease=$(./gradlew shouldDoRelease | awk '/^do release (.*)$/ { print "-p "$3; }')
           moduleCount=$(echo $moduleToRelease | grep -ow "\-p" | wc -l)
+          echo "::info::Modules marked for release: $moduleToRelease"
           if [ "$moduleCount" -eq 1 ]; then
             echo "STATUS=release" >> $GITHUB_ENV
             echo "MODULE_TO_RELEASE=$moduleToRelease " >> $GITHUB_ENV

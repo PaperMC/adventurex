@@ -2,7 +2,7 @@ plugins {
   id("adventure.common-conventions")
 }
 
-version = "1.0.0"
+version = "1.0.0-SNAPSHOT"
 
 dependencies {
   api(libs.adventure.nbt)
