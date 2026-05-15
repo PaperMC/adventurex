@@ -7,6 +7,7 @@ plugins {
   id("net.kyori.indra")
   id("net.kyori.indra.checkstyle")
   id("net.kyori.indra.licenser.spotless")
+  id("net.kyori.indra.publishing")
   id("com.adarshr.test-logger")
   id("com.diffplug.eclipse.apt")
   id("net.ltgt.errorprone")
@@ -88,4 +89,8 @@ tasks.register("shouldDoRelease") {
     }
     logger.lifecycle("do release ${project.projectDir.name}")
   }
+}
+
+indra {
+  signWithKeyFromPrefixedProperties("papermc")
 }
