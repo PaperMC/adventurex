@@ -21,6 +21,7 @@ jobs:
       publish_release_javadoc: false
       publish_modules_individually: true
       runtime_version: 25
+      gradle_warning_mode: "summary"
     secrets:
       publishing_env_vars: |
         ORG_GRADLE_PROJECT_sonatypeUsername="${{ secrets.PAPERMC_SONATYPE_USERNAME }}"
