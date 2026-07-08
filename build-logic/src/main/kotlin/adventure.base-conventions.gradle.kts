@@ -21,4 +21,13 @@ indra {
   mitLicense()
 
   signWithKeyFromPrefixedProperties("papermc")
+  configurePublications {
+    pom {
+      developers {
+        developer {
+          id = "kezz"
+        }
+      }
+    }
+  }
 }
