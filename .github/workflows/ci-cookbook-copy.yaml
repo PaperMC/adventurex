@@ -29,7 +29,7 @@ on:
         description: 'Extra tasks to pass to the Gradle invocation that publishes releases of this project'
         required: false
         type: string
-        default: 'publishToSonatype closeAndReleaseSonatypeStagingRepository'
+        default: 'publishToSonatype :closeAndReleaseSonatypeStagingRepository'
       gradle_warning_mode:
         description: 'Warning mode to set on Gradle executions'
         required: false
