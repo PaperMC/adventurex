@@ -20,3 +20,5 @@ Please make sure all tests pass, license headers are updated, and checkstyle pas
 [documentation]: https://docs.papermc.io/adventure/
 [#adventure-contrib]: https://discord.com/channels/289587909051416579/1342377788266512415
 [PaperMC Discord]: https://discord.gg/PaperMC
+
+<img src="https://papermc.io/assets/misc/namespace-oss-badge.svg?project=adventurex" alt="CI powered by namespace badge" />

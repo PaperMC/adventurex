@@ -24,7 +24,7 @@ jobs:
       gradle_warning_mode: "summary"
     secrets:
       publishing_env_vars: |
-        ORG_GRADLE_PROJECT_sonatypeUsername="${{ secrets.PAPERMC_SONATYPE_USERNAME }}"
-        ORG_GRADLE_PROJECT_sonatypePassword="${{ secrets.PAPERMC_SONATYPE_PASSWORD }}"
+        ORG_GRADLE_PROJECT_sonatypeUsername="${{ secrets.ARTIFACTORY_USERNAME }}"
+        ORG_GRADLE_PROJECT_sonatypePassword="${{ secrets.ARTIFACTORY_PASSWORD }}"
         ORG_GRADLE_PROJECT_papermcSigningKey="${{ secrets.PAPERMC_GPG_KEY }}"
         ORG_GRADLE_PROJECT_papermcSigningPassword="${{ secrets.PAPERMC_GPG_PASSWORD }}"
