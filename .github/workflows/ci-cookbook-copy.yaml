@@ -93,7 +93,7 @@ jobs:
     steps:
       - name: "setup environment"
         id: "setup"
-        uses: "KyoriPowered/.github/.github/actions/setup-java-env@trunk"
+        uses: "KyoriPowered/.github/.github/actions/setup-java-env@7b79b090212a9c8e371b71c23f5e7b097d125997" # trunk
         with:
           runtime_version: "${{ inputs.runtime_version }}"
           publishing_branch_regex: "${{ inputs.publishing_branch_regex }}"
@@ -102,7 +102,7 @@ jobs:
         run: "./gradlew ${{ inputs.extra_gradle_params }} build"
       - name: "archive test results"
         if: "${{ always() }}"
-        uses: "actions/upload-artifact@bbbca2ddaa5d8feaa63e36b76fdaad77386f024f" # v7.0.0
+        uses: "actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a" # v7.0.1
         with:
           name: "${{ runner.os }}-test-results"
           path: |
@@ -180,7 +180,7 @@ jobs:
           ./gradlew ${{ inputs.extra_gradle_params }} copyJavadoc --output build/publish-jd/${{ inputs.javadoc_deploy_prefix }}
       - name: "authenticate for javadoc publication"
         if: "${{ inputs.publish_release_javadoc && runner.os == 'Linux' && env.STATUS == 'release' && github.event_name == 'release' }}"
-        uses: "actions/create-github-app-token@f8d387b68d61c58ab83c6c016672934102569859" # v3.0.0
+        uses: "actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1" # v3.2.0
         id: jd-token
         with:
           app-id: "${{ secrets.DEPLOYMENT_APP_ID }}"
@@ -193,7 +193,7 @@ jobs:
         run: 'echo "user-id=$(gh api "/users/${{ steps.jd-token.outputs.app-slug }}[bot]" --jq .id)" >> "$GITHUB_OUTPUT"'
       - name: "publish javadoc"
         if: "${{ inputs.publish_release_javadoc && runner.os == 'Linux' && env.STATUS == 'release' && github.event_name == 'release' }}"
-        uses: JamesIves/github-pages-deploy-action@d92aa235d04922e8f08b40ce78cc5442fcfbfa2f # v4.8.0
+        uses: JamesIves/github-pages-deploy-action@fa24774553152dd7873cd16ebd8d959b010c5445 # v4.9.0
         with:
           folder: build/publish-jd
           repository-name: "${{ inputs.javadoc_deploy_owner }}/${{ inputs.javadoc_deploy_repo }}"
